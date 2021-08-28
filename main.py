@@ -25,7 +25,7 @@ class Movement(Enum):
     W = 3
 
 
-state_set = {
+state_set = [
     Position.NW,
     Position.NN,
     Position.NE,
@@ -35,20 +35,20 @@ state_set = {
     Position.SW,
     Position.SS,
     Position.SE
-}
+]
 
-action_set = {
+action_set = [
     Movement.N,
     Movement.S,
     Movement.E,
     Movement.W
-}
+]
 
 trans_tensor = np.array([
     # North Transition Matrix
-    [[0, 0, 0, 0, 0, 0, 0, 0, 0],
-     [0, 0, 0, 0, 0, 0, 0, 0, 0],
-     [0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [[1, 0, 0, 0, 0, 0, 0, 0, 0],
+     [0, 1, 0, 0, 0, 0, 0, 0, 0],
+     [0, 0, 1, 0, 0, 0, 0, 0, 0],
      [1, 0, 0, 0, 0, 0, 0, 0, 0],
      [0, 1, 0, 0, 0, 0, 0, 0, 0],
      [0, 0, 1, 0, 0, 0, 0, 0, 0],
@@ -63,41 +63,57 @@ trans_tensor = np.array([
      [0, 0, 0, 0, 0, 0, 1, 0, 0],
      [0, 0, 0, 0, 0, 0, 0, 1, 0],
      [0, 0, 0, 0, 0, 0, 0, 0, 1],
-     [0, 0, 0, 0, 0, 0, 0, 0, 0],
-     [0, 0, 0, 0, 0, 0, 0, 0, 0],
-     [0, 0, 0, 0, 0, 0, 0, 0, 0],],
+     [0, 0, 0, 0, 0, 0, 1, 0, 0],
+     [0, 0, 0, 0, 0, 0, 0, 1, 0],
+     [0, 0, 0, 0, 0, 0, 0, 0, 1]],
 
     # East Transition Matrix
     [[0, 1, 0, 0, 0, 0, 0, 0, 0],
      [0, 0, 1, 0, 0, 0, 0, 0, 0],
-     [0, 0, 0, 0, 0, 0, 0, 0, 0],
+     [0, 0, 1, 0, 0, 0, 0, 0, 0],
      [0, 0, 0, 0, 1, 0, 0, 0, 0],
      [0, 0, 0, 0, 0, 1, 0, 0, 0],
-     [0, 0, 0, 0, 0, 0, 0, 0, 0],
+     [0, 0, 0, 0, 0, 1, 0, 0, 0],
      [0, 0, 0, 0, 0, 0, 0, 1, 0],
      [0, 0, 0, 0, 0, 0, 0, 0, 1],
-     [0, 0, 0, 0, 0, 0, 0, 0, 0]],
+     [0, 0, 0, 0, 0, 0, 0, 0, 1]],
 
     # West Transition Matrix
-    [[0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [[1, 0, 0, 0, 0, 0, 0, 0, 0],
      [1, 0, 0, 0, 0, 0, 0, 0, 0],
      [0, 1, 0, 0, 0, 0, 0, 0, 0],
-     [0, 0, 0, 0, 0, 0, 0, 0, 0],
+     [0, 0, 0, 1, 0, 0, 0, 0, 0],
      [0, 0, 0, 1, 0, 0, 0, 0, 0],
      [0, 0, 0, 0, 1, 0, 0, 0, 0],
-     [0, 0, 0, 0, 0, 0, 0, 0, 0],
+     [0, 0, 0, 0, 0, 0, 1, 0, 0],
      [0, 0, 0, 0, 0, 0, 1, 0, 0],
      [0, 0, 0, 0, 0, 0, 0, 1, 0]]
 ])
 
-reward_place = Position(np.random.choice(list(state_set - {Position.NW}), 1)[0])
+reward_place = Position(np.random.choice(list(set(state_set) - {Position.NW}), 1)[0])
 
 collected = False
 
 
 def reward(state, action):
-    if state == reward_place:
-        return 50
+    if state == Position.NW and (action == Movement.N or action == Movement.W):
+        return -50
+    elif state == Position.NN and (action == Movement.N):
+        return -50
+    elif state == Position.NE and (action == Movement.N or action == Movement.E):
+        return -50
+    elif state == Position.WW and (action == Movement.W):
+        return -50
+    elif state == Position.EE and (action == Movement.E):
+        return -50
+    elif state == Position.SW and (action == Movement.S or action == Movement.W):
+        return -50
+    elif state == Position.SS and (action == Movement.S):
+        return -50
+    elif state == Position.SE and (action == Movement.S or action == Movement.E):
+        return -50
+    elif state == reward_place:
+        return 100
     else:
         return 0
 
@@ -122,7 +138,7 @@ def generate_q_matrix_list_finite(reward_func, h=20, q_matrix_list=[], prev_q_ma
         return generate_q_matrix_list_finite(reward_func, h, q_matrix_list, q_new, n + 1)
 
 
-def generate_q_matrix_infinite(reward_func, iterations=20, prev_q_matrix=None, n=1):
+def generate_q_matrix_infinite(reward_func, iterations=20, prev_q_matrix=None, n=20):
     if iterations <= 0:
         return prev_q_matrix
     else:
@@ -171,12 +187,9 @@ def interact_with_environment(initial_state=Position.NW):
     time.sleep(2)
     while not collected:
         best_action = generate_best_action(state, q_matrix)
-        old_state = state
         state = change_state(state, best_action)
         if state == reward_place:
             collected = True
-        else:
-            q_matrix = reduce_trust(q_matrix, old_state, best_action)
         clear_console()
         print(f'Turn {turn}: ')
         turn += 1
@@ -214,22 +227,20 @@ def flag_matrix(q_matrix):
     return q_matrix
 
 
-def reduce_trust(q_matrix, state, action):
-    q_matrix[state.value][action.value] = q_matrix[state.value][action.value] - 500
+def reduce_trust(q_matrix, state, action, weight):
+    q_matrix[state.value][action.value] = q_matrix[state.value][action.value] - weight
     return q_matrix
 
 
 def generate_best_action(state, q_matrix):
-    return Movement(np.argmax(q_matrix[state.value]))
+    choice = Movement(np.argmax(q_matrix[state.value]))
+    return choice
 
 
 def change_state(state, action):
     probabilities = trans_tensor[action.value][state.value]
-    if np.any(probabilities) == 1:
-        choice = np.dot(probabilities, np.array(range(0, 9)).T)
-        return Position(choice)
-    else:
-        return state
+    choice = np.dot(probabilities, np.array(range(0, 9)).T)
+    return Position(choice)
 
 
 agent_sprite = '*'
